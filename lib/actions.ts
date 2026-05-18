@@ -57,14 +57,38 @@ export async function actionInsertPairing(payload: {
 
   if (error || !inserted) return { data: null, error: error ? error.message : 'Unknown error' }
 
-  // Fetch with joins separately (admin client bypasses RLS on portals too)
-  const { data, error: fetchErr } = await db
+  const { data: withJoin, error: fetchErr } = await db
     .from('pairings')
     .select('*, portal_a_info:portals!portal_a(id, name, portal_id, status), portal_b_info:portals!portal_b(id, name, portal_id, status)')
     .eq('id', inserted.id)
     .single()
 
-  return { data, error: fetchErr ? fetchErr.message : null }
+  if (!fetchErr && withJoin) return { data: withJoin, error: null }
+
+  // Fallback: plain row + manual portal lookup
+  const { data: plain, error: plainErr } = await db
+    .from('pairings')
+    .select('*')
+    .eq('id', inserted.id)
+    .single()
+
+  if (plainErr || !plain) return { data: null, error: plainErr?.message ?? 'Unknown error' }
+
+  const { data: portalRows } = await db
+    .from('portals')
+    .select('id, name, portal_id, status')
+    .in('id', [plain.portal_a, plain.portal_b].filter(Boolean))
+
+  const portalMap = Object.fromEntries((portalRows ?? []).map(p => [p.id, p]))
+
+  return {
+    data: {
+      ...plain,
+      portal_a_info: portalMap[plain.portal_a] ?? null,
+      portal_b_info: portalMap[plain.portal_b] ?? null,
+    },
+    error: null,
+  }
 }
 
 export async function actionTogglePairing(id: string, active: boolean) {

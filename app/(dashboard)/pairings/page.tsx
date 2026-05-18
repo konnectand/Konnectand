@@ -1,13 +1,13 @@
 import { requireAuth, isKonnectANDStaff, canManagePairings } from '@/lib/auth'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { PairingsManager } from '@/components/PairingsManager'
 import { Link2 } from 'lucide-react'
 
 export default async function PairingsPage() {
   const user = await requireAuth()
-  const supabase = createClient()
+  const db = createAdminClient()
 
-  let portalsQuery = supabase
+  let portalsQuery = db
     .from('portals')
     .select('id, name, portal_id, status, client_id, clients(name)')
     .order('name')
@@ -16,13 +16,48 @@ export default async function PairingsPage() {
     portalsQuery = portalsQuery.eq('client_id', user.client_id)
   }
 
-  const [{ data: pairings }, { data: portals }] = await Promise.all([
-    supabase
+  const [{ data: rawPairings, error: pairingsError }, { data: portals }] = await Promise.all([
+    db
       .from('pairings')
-      .select('*, portal_a_info:portals!portal_a(id, name, portal_id, status), portal_b_info:portals!portal_b(id, name, portal_id, status)')
+      .select(`
+        *,
+        portal_a_info:portals!portal_a(id, name, portal_id, status),
+        portal_b_info:portals!portal_b(id, name, portal_id, status)
+      `)
       .order('created_at', { ascending: false }),
     portalsQuery,
   ])
+
+  // If the join fails (e.g. ambiguous FK hint on this Supabase version), fall back to
+  // a plain select + manual lookup so the page always renders real data.
+  let resolvedPairings = rawPairings ?? []
+
+  if (pairingsError || resolvedPairings.length === 0) {
+    const { data: plainPairings } = await db
+      .from('pairings')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (plainPairings && plainPairings.length > 0) {
+      const allPortalIds = [
+        ...plainPairings.map(p => p.portal_a),
+        ...plainPairings.map(p => p.portal_b),
+      ].filter(Boolean)
+
+      const { data: portalRows } = await db
+        .from('portals')
+        .select('id, name, portal_id, status')
+        .in('id', [...new Set(allPortalIds)])
+
+      const portalMap = Object.fromEntries((portalRows ?? []).map(p => [p.id, p]))
+
+      resolvedPairings = plainPairings.map(p => ({
+        ...p,
+        portal_a_info: portalMap[p.portal_a] ?? null,
+        portal_b_info: portalMap[p.portal_b] ?? null,
+      }))
+    }
+  }
 
   const canManage = canManagePairings(user.role)
 
@@ -41,7 +76,7 @@ export default async function PairingsPage() {
       </div>
 
       <PairingsManager
-        initialPairings={pairings ?? []}
+        initialPairings={resolvedPairings}
         availablePortals={portals ?? []}
         canManage={canManage}
       />
