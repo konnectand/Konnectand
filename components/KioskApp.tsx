@@ -17,9 +17,10 @@ export default function KioskApp({ portalId }: Props) {
   const stateRef = useRef<KioskState>('IDLE')
 
   const set = useCallback((s: KioskState) => {
+    console.log(`[KioskApp:${portalId}] state: ${stateRef.current} → ${s}`)
     stateRef.current = s
     setState(s)
-  }, [])
+  }, [portalId])
 
   const { localStream, remoteStream, startCall, hangUp } = useWebRTC(portalId)
 
@@ -27,20 +28,29 @@ export default function KioskApp({ portalId }: Props) {
   const cameraStreamRef = useRef<MediaStream | null>(null)
 
   const openCamera = useCallback(async () => {
-    if (cameraStreamRef.current) return
+    if (cameraStreamRef.current) {
+      console.log(`[KioskApp:${portalId}] openCamera — already open, reusing`)
+      return
+    }
+    console.log(`[KioskApp:${portalId}] openCamera — calling getUserMedia...`)
     try {
       cameraStreamRef.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      const tracks = cameraStreamRef.current.getTracks().map(t => `${t.kind}(${t.readyState})`).join(', ')
+      console.log(`[KioskApp:${portalId}] openCamera OK — tracks: ${tracks}`)
     } catch (err) {
-      console.error('[KioskApp] Camera open failed:', err)
+      console.error(`[KioskApp:${portalId}] openCamera failed:`, err)
     }
-  }, [])
+  }, [portalId])
 
   const closeCamera = useCallback(() => {
-    cameraStreamRef.current?.getTracks().forEach(t => t.stop())
+    if (!cameraStreamRef.current) return
+    console.log(`[KioskApp:${portalId}] closeCamera — stopping tracks`)
+    cameraStreamRef.current.getTracks().forEach(t => t.stop())
     cameraStreamRef.current = null
-  }, [])
+  }, [portalId])
 
   const handleCommand = useCallback((cmd: PortalCommand) => {
+    console.log(`[KioskApp:${portalId}] command received:`, cmd)
     switch (cmd.type) {
       case 'set_standby':
         closeCamera()
@@ -50,8 +60,14 @@ export default function KioskApp({ portalId }: Props) {
         set('IDLE')
         break
       case 'initiate_call':
+        console.log(`[KioskApp:${portalId}] initiate_call → peerId=${cmd.peerId}`)
         openCamera().then(() => {
-          startCall(cmd.peerId, cameraStreamRef.current ?? undefined).then(() => set('ACTIVE'))
+          const stream = cameraStreamRef.current ?? undefined
+          console.log(`[KioskApp:${portalId}] calling startCall with stream=${!!stream}`)
+          startCall(cmd.peerId, stream).then(() => {
+            console.log(`[KioskApp:${portalId}] startCall resolved, transitioning to ACTIVE`)
+            set('ACTIVE')
+          })
         })
         break
       case 'end_call':
@@ -60,7 +76,7 @@ export default function KioskApp({ portalId }: Props) {
         set('IDLE')
         break
     }
-  }, [set, startCall, hangUp, openCamera, closeCamera])
+  }, [portalId, set, startCall, hangUp, openCamera, closeCamera])
 
   useHeartbeat(portalId, stateRef)
   useCommandListener(portalId, handleCommand)

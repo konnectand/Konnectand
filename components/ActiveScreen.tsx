@@ -15,22 +15,34 @@ export default function ActiveScreen({ localStream, remoteStream, onHangUp }: Pr
   const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
+    console.log('[ActiveScreen] mounted — localStream:', !!localStream, 'remoteStream:', !!remoteStream)
     const t = setInterval(() => setElapsed(s => s + 1), 1000)
-    return () => clearInterval(t)
+    return () => {
+      console.log('[ActiveScreen] unmounted')
+      clearInterval(t)
+    }
   }, [])
 
   useEffect(() => {
-    if (remoteRef.current && remoteStream) {
-      remoteRef.current.srcObject = remoteStream
-      remoteRef.current.play().catch(() => {})
-    }
+    console.log('[ActiveScreen] remoteStream changed:', remoteStream
+      ? `${remoteStream.getTracks().map(t => `${t.kind}(${t.readyState})`).join(', ')}`
+      : 'null')
+    if (!remoteRef.current || !remoteStream) return
+    remoteRef.current.srcObject = remoteStream
+    remoteRef.current.play()
+      .then(() => console.log('[ActiveScreen] remote video playing'))
+      .catch(err => console.error('[ActiveScreen] remote video play() failed:', err))
   }, [remoteStream])
 
   useEffect(() => {
-    if (localRef.current && localStream) {
-      localRef.current.srcObject = localStream
-      localRef.current.play().catch(() => {})
-    }
+    console.log('[ActiveScreen] localStream changed:', localStream
+      ? `${localStream.getTracks().map(t => `${t.kind}(${t.readyState})`).join(', ')}`
+      : 'null')
+    if (!localRef.current || !localStream) return
+    localRef.current.srcObject = localStream
+    localRef.current.play()
+      .then(() => console.log('[ActiveScreen] local video playing'))
+      .catch(err => console.error('[ActiveScreen] local video play() failed:', err))
   }, [localStream])
 
   const fmt = (s: number) =>
