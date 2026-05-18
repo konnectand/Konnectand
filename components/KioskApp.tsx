@@ -23,14 +23,44 @@ export default function KioskApp({ portalId }: Props) {
 
   const { localStream, remoteStream, startCall, hangUp } = useWebRTC(portalId)
 
+  // Camera stream managed here so it persists across PRESENCE → ACTIVE without re-requesting permission
+  const cameraStreamRef = useRef<MediaStream | null>(null)
+
+  const openCamera = useCallback(async () => {
+    if (cameraStreamRef.current) return
+    try {
+      cameraStreamRef.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    } catch (err) {
+      console.error('[KioskApp] Camera open failed:', err)
+    }
+  }, [])
+
+  const closeCamera = useCallback(() => {
+    cameraStreamRef.current?.getTracks().forEach(t => t.stop())
+    cameraStreamRef.current = null
+  }, [])
+
   const handleCommand = useCallback((cmd: PortalCommand) => {
     switch (cmd.type) {
-      case 'set_standby':   set('STANDBY'); break
-      case 'resume':        set('IDLE');    break
-      case 'initiate_call': startCall(cmd.peerId).then(() => set('ACTIVE')); break
-      case 'end_call':      hangUp(); set('IDLE'); break
+      case 'set_standby':
+        closeCamera()
+        set('STANDBY')
+        break
+      case 'resume':
+        set('IDLE')
+        break
+      case 'initiate_call':
+        openCamera().then(() => {
+          startCall(cmd.peerId, cameraStreamRef.current ?? undefined).then(() => set('ACTIVE'))
+        })
+        break
+      case 'end_call':
+        hangUp()
+        closeCamera()
+        set('IDLE')
+        break
     }
-  }, [set, startCall, hangUp])
+  }, [set, startCall, hangUp, openCamera, closeCamera])
 
   useHeartbeat(portalId, stateRef)
   useCommandListener(portalId, handleCommand)
@@ -40,13 +70,16 @@ export default function KioskApp({ portalId }: Props) {
       {state === 'IDLE' && (
         <IdleScreen
           portalId={portalId}
-          onMotionDetected={() => set('PRESENCE')}
+          onMotionDetected={() => {
+            set('PRESENCE')
+            openCamera()  // pre-warm camera while user decides to connect
+          }}
         />
       )}
       {state === 'PRESENCE' && (
         <PresenceScreen
           portalId={portalId}
-          onExpired={() => set('IDLE')}
+          onExpired={() => { closeCamera(); set('IDLE') }}
           onActivated={() => set('ACTIVE')}
         />
       )}
@@ -54,7 +87,7 @@ export default function KioskApp({ portalId }: Props) {
         <ActiveScreen
           localStream={localStream}
           remoteStream={remoteStream}
-          onHangUp={() => { hangUp(); set('IDLE') }}
+          onHangUp={() => { hangUp(); closeCamera(); set('IDLE') }}
         />
       )}
       {state === 'STANDBY' && <StandbyScreen portalId={portalId} />}

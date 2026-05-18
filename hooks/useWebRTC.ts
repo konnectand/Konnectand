@@ -16,31 +16,39 @@ export function useWebRTC(portalId: string) {
   const localStreamRef = useRef<MediaStream | null>(null)
   const peerIdRef      = useRef<string | null>(null)
 
-  const cleanup = useCallback(() => {
+  // preserveStream=true skips stopping tracks — used when the caller owns the stream lifecycle
+  const cleanup = useCallback((preserveStream = false) => {
     pcRef.current?.close()
     pcRef.current = null
     channelRef.current?.unsubscribe()
     channelRef.current = null
-    localStreamRef.current?.getTracks().forEach(t => t.stop())
-    localStreamRef.current = null
-    setLocalStream(null)
+    if (!preserveStream) {
+      localStreamRef.current?.getTracks().forEach(t => t.stop())
+      localStreamRef.current = null
+      setLocalStream(null)
+    }
     setRemoteStream(null)
     peerIdRef.current = null
   }, [])
 
-  const startCall = useCallback(async (peerId: string) => {
-    cleanup()
+  // existingStream: pass a pre-opened stream to avoid re-requesting camera permission
+  const startCall = useCallback(async (peerId: string, existingStream?: MediaStream) => {
+    cleanup(!!existingStream)
     peerIdRef.current = peerId
 
     const supabase = createClient()
     const channelName = `webrtc:${[portalId, peerId].sort().join(':')}`
 
     let stream: MediaStream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    } catch (err) {
-      console.error('[WebRTC] getUserMedia failed:', err)
-      return
+    if (existingStream) {
+      stream = existingStream
+    } else {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      } catch (err) {
+        console.error('[WebRTC] getUserMedia failed:', err)
+        return
+      }
     }
     localStreamRef.current = stream
     setLocalStream(stream)

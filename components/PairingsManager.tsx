@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { actionInsertPairing, actionTogglePairing } from '@/lib/actions'
+import { actionInsertPairing, actionTogglePairing, actionDeletePairing } from '@/lib/actions'
 import { StatusBadge } from './StatusBadge'
-import { Link2, Plus, Power, Loader2, X } from 'lucide-react'
+import { Link2, Plus, Power, Loader2, X, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 interface PortalInfo {
@@ -38,6 +38,7 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
   const [formMode, setFormMode] = useState('conference')
   const [saving, setSaving] = useState(false)
   const [toggling, setToggling] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   async function handleCreate() {
@@ -54,6 +55,16 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
       setFormError(error ?? 'Error desconocido al crear el emparejamiento')
     }
     setSaving(false)
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('¿Eliminar este emparejamiento? Esta acción no se puede deshacer.')) return
+    setDeleting(id)
+    const { error } = await actionDeletePairing(id)
+    if (!error) {
+      setPairings(prev => prev.filter(p => p.id !== id))
+    }
+    setDeleting(null)
   }
 
   async function handleToggle(id: string, currentActive: boolean) {
@@ -173,13 +184,22 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
                 </Link>
 
                 {canManage && (
-                  <button
-                    onClick={() => handleToggle(pair.id, pair.active)}
-                    disabled={toggling === pair.id}
-                    className={`p-2 rounded-lg transition-colors ${pair.active ? 'text-teal-400 hover:bg-teal-500/10' : 'text-gray-600 hover:bg-gray-500/10'}`}
-                  >
-                    {toggling === pair.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleToggle(pair.id, pair.active)}
+                      disabled={toggling === pair.id}
+                      className={`p-2 rounded-lg transition-colors ${pair.active ? 'text-teal-400 hover:bg-teal-500/10' : 'text-gray-600 hover:bg-gray-500/10'}`}
+                    >
+                      {toggling === pair.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(pair.id)}
+                      disabled={deleting === pair.id}
+                      className="p-2 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      {deleting === pair.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

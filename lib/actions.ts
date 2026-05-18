@@ -100,6 +100,13 @@ export async function actionTogglePairing(id: string, active: boolean) {
   return { error: error ? error.message : null }
 }
 
+export async function actionDeletePairing(id: string) {
+  const db = createAdminClient()
+  const { error } = await db.from('pairings').delete().eq('id', id)
+  if (error) console.error('[actionDeletePairing] DELETE failed:', error)
+  return { error: error ? error.message : null }
+}
+
 // ── USERS ─────────────────────────────────────────────────
 
 export async function actionInsertUser(payload: {
