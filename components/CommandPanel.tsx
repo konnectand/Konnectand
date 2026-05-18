@@ -39,7 +39,7 @@ export function CommandPanel({ portalId, portalName, currentMode }: Props) {
     setLoading(null)
 
     if (error) {
-      setFeedback({ type: 'error', message: 'Error al enviar el comando: ' + error.message })
+      setFeedback({ type: 'error', message: 'Error al enviar el comando: ' + (typeof error === 'string' ? error : String(error)) })
     } else {
       const labels: Record<CommandType, string> = {
         restart_app: 'Reiniciar app enviado',
