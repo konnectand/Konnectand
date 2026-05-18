@@ -1,4 +1,4 @@
-import { requireAuth, isKonnectANDStaff } from '@/lib/auth'
+import { requireAuth, isKonnectANDStaff, canManageClients } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { RealtimePortalsList } from '@/components/RealtimePortalsList'
 import { Monitor } from 'lucide-react'
@@ -16,7 +16,10 @@ export default async function PortalsPage() {
     query = query.eq('client_id', user.client_id)
   }
 
-  const { data: portals, error } = await query
+  const [{ data: portals, error }, { data: clients }] = await Promise.all([
+    query,
+    supabase.from('clients').select('id, name').eq('active', true).order('name'),
+  ])
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -38,7 +41,11 @@ export default async function PortalsPage() {
         </div>
       )}
 
-      <RealtimePortalsList initialPortals={portals ?? []} />
+      <RealtimePortalsList
+        initialPortals={portals ?? []}
+        clients={clients ?? []}
+        canCreate={canManageClients(user.role)}
+      />
     </div>
   )
 }

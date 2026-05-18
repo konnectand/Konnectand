@@ -22,6 +22,25 @@ export async function actionToggleClient(id: string, active: boolean) {
   return { error: error ? error.message : null }
 }
 
+// ── PORTALS ──────────────────────────────────────────────
+
+export async function actionInsertPortal(payload: {
+  portal_id: string
+  name: string
+  client_id: string
+  location: string
+  country: string
+  app_mode: string
+}) {
+  const db = createAdminClient()
+  const { data, error } = await db
+    .from('portals')
+    .insert({ ...payload, status: 'offline', hardware_info: {} })
+    .select('*, clients(name, country), portal_status(*)')
+    .single()
+  return { data, error: error ? error.message : null }
+}
+
 // ── PAIRINGS ─────────────────────────────────────────────
 
 export async function actionInsertPairing(payload: {
