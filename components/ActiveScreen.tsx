@@ -20,11 +20,17 @@ export default function ActiveScreen({ localStream, remoteStream, onHangUp }: Pr
   }, [])
 
   useEffect(() => {
-    if (remoteRef.current && remoteStream) remoteRef.current.srcObject = remoteStream
+    if (remoteRef.current && remoteStream) {
+      remoteRef.current.srcObject = remoteStream
+      remoteRef.current.play().catch(() => {})
+    }
   }, [remoteStream])
 
   useEffect(() => {
-    if (localRef.current && localStream) localRef.current.srcObject = localStream
+    if (localRef.current && localStream) {
+      localRef.current.srcObject = localStream
+      localRef.current.play().catch(() => {})
+    }
   }, [localStream])
 
   const fmt = (s: number) =>
