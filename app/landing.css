@@ -31,17 +31,18 @@ body {
   position: fixed;
   top: 0; left: 0;
   width: 8px; height: 8px;
-  background: var(--purple);
+  background: #fff;
   border-radius: 50%;
   pointer-events: none;
   z-index: 9999;
+  box-shadow: 0 0 6px 1px rgba(139,127,245,.8);
   transition: opacity .2s;
 }
 #cursor-ring {
   position: fixed;
   top: 0; left: 0;
   width: 40px; height: 40px;
-  border: 1.5px solid rgba(139,127,245,.5);
+  border: 1.5px solid rgba(255,255,255,.5);
   border-radius: 50%;
   pointer-events: none;
   z-index: 9998;
