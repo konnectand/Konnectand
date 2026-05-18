@@ -80,9 +80,9 @@ export async function actionInsertPairing(payload: {
   const { data: portalRows } = await db
     .from('portals')
     .select('id, name, portal_id, status')
-    .in('id', [plain.portal_a, plain.portal_b].filter(Boolean))
+    .in('portal_id', [plain.portal_a, plain.portal_b].filter(Boolean))
 
-  const portalMap = Object.fromEntries((portalRows ?? []).map(p => [p.id, p]))
+  const portalMap = Object.fromEntries((portalRows ?? []).map(p => [p.portal_id, p]))
 
   return {
     data: {

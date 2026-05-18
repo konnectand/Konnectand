@@ -92,7 +92,7 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
               >
                 <option value="">Seleccionar portal...</option>
                 {availablePortals.map((p: any) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.portal_id}>{p.name}</option>
                 ))}
               </select>
             </div>
@@ -104,8 +104,8 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
                 className="w-full bg-[#09090F] border border-[#1A1A2E] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#8B7FF5]"
               >
                 <option value="">Seleccionar portal...</option>
-                {availablePortals.filter((p: any) => p.id !== formPortalA).map((p: any) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                {availablePortals.filter((p: any) => p.portal_id !== formPortalA).map((p: any) => (
+                  <option key={p.id} value={p.portal_id}>{p.name}</option>
                 ))}
               </select>
             </div>

@@ -47,9 +47,9 @@ export default async function PairingsPage() {
       const { data: portalRows } = await db
         .from('portals')
         .select('id, name, portal_id, status')
-        .in('id', Array.from(new Set(allPortalIds)))
+        .in('portal_id', Array.from(new Set(allPortalIds)))
 
-      const portalMap = Object.fromEntries((portalRows ?? []).map(p => [p.id, p]))
+      const portalMap = Object.fromEntries((portalRows ?? []).map(p => [p.portal_id, p]))
 
       resolvedPairings = plainPairings.map(p => ({
         ...p,
