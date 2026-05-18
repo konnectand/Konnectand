@@ -46,6 +46,7 @@ export default function LandingPage() {
     window.addEventListener('mousemove', onMove)
 
     function tick() {
+      if (!dot || !ring) return
       rx += (mx - rx) * 0.12
       ry += (my - ry) * 0.12
       dot.style.transform  = `translate(${mx - 4}px, ${my - 4}px)`
