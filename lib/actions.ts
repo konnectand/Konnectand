@@ -55,7 +55,10 @@ export async function actionInsertPairing(payload: {
     .select('id')
     .single()
 
-  if (error || !inserted) return { data: null, error: error ? error.message : 'Unknown error' }
+  if (error || !inserted) {
+    console.error('[actionInsertPairing] INSERT failed:', error)
+    return { data: null, error: error ? error.message : 'Unknown error' }
+  }
 
   const { data: withJoin, error: fetchErr } = await db
     .from('pairings')

@@ -38,16 +38,20 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
   const [formMode, setFormMode] = useState('conference')
   const [saving, setSaving] = useState(false)
   const [toggling, setToggling] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
 
   async function handleCreate() {
     if (!formPortalA || !formPortalB || formPortalA === formPortalB) return
     setSaving(true)
+    setFormError(null)
     const { data, error } = await actionInsertPairing({ portal_a: formPortalA, portal_b: formPortalB, app_mode: formMode })
     if (!error && data) {
       setPairings(prev => [data, ...prev])
       setShowForm(false)
       setFormPortalA('')
       setFormPortalB('')
+    } else {
+      setFormError(error ?? 'Error desconocido al crear el emparejamiento')
     }
     setSaving(false)
   }
@@ -66,7 +70,7 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
       {canManage && (
         <div className="flex justify-end">
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => { setShowForm(!showForm); setFormError(null) }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#8B7FF5] hover:bg-[#7B6FE5] text-white text-sm font-medium transition-colors"
           >
             {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
@@ -118,6 +122,11 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
               </select>
             </div>
           </div>
+          {formError && (
+            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              {formError}
+            </p>
+          )}
           <button
             onClick={handleCreate}
             disabled={saving || !formPortalA || !formPortalB}
