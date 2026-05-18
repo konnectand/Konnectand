@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #09090F;
+  --bg-card: #0F0F1A;
+  --border: #1A1A2E;
+  --purple: #8B7FF5;
+  --teal: #2DD4A8;
+  --gold: #F0B429;
+  --danger: #EF4444;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: #09090F;
+  color: #e5e7eb;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #09090F; }
+::-webkit-scrollbar-thumb { background: #1A1A2E; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2A2A4E; }
+
+/* Dashboard animations */
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.status-pulse { animation: statusPulse 2s ease-in-out infinite; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+
+/* Log level colours */
+.log-info     { color: #9ca3af; }
+.log-warning  { color: #F0B429; }
+.log-error    { color: #f87171; }
+.log-critical { color: #ef4444; font-weight: 600; }
+
+/* Portal kiosk state wrapper */
+.portal-state {
+  position: absolute;
+  inset: 0;
+  animation: portalFadeIn 0.6s ease-out forwards;
+}
+
+@keyframes portalFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Ambient idle orb */
+@keyframes ambientDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(30px, -20px) scale(1.05); }
+  66%       { transform: translate(-20px, 15px) scale(0.97); }
+}
+.ambient-orb { animation: ambientDrift 12s ease-in-out infinite; }
+
+/* Clock display */
+.clock { font-variant-numeric: tabular-nums; }
