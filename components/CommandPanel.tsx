@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { actionInsertPortalLog, actionUpdatePortalMode } from '@/lib/actions'
 import { Power, RotateCcw, Settings, Loader2, CheckCircle, XCircle } from 'lucide-react'
 
 interface Props {
@@ -24,17 +24,16 @@ export function CommandPanel({ portalId, portalName, currentMode }: Props) {
   async function sendCommand(type: CommandType, payload?: Record<string, string>) {
     setLoading(type)
     setFeedback(null)
-    const supabase = createClient()
 
-    const { error } = await supabase.from('portal_logs').insert({
+    const { error } = await actionInsertPortalLog({
       portal_id: portalId,
-      level: 'info',
-      message: `Comando remoto enviado: ${type}${payload ? ' -> ' + JSON.stringify(payload) : ''}`,
-      data: { command: type, payload, source: 'dashboard' },
+      level:     'command',
+      message:   JSON.stringify({ type, ...(payload ?? {}) }),
+      data:      { command: type, payload, source: 'dashboard' },
     })
 
     if (type === 'change_mode' && payload?.mode) {
-      await supabase.from('portals').update({ app_mode: payload.mode }).eq('id', portalId)
+      await actionUpdatePortalMode(portalId, payload.mode)
     }
 
     setLoading(null)

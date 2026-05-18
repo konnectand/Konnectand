@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { actionInsertPairing, actionTogglePairing } from '@/lib/actions'
 import { StatusBadge } from './StatusBadge'
 import { Link2, Plus, Power, Loader2, X } from 'lucide-react'
 import Link from 'next/link'
@@ -42,13 +42,7 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
   async function handleCreate() {
     if (!formPortalA || !formPortalB || formPortalA === formPortalB) return
     setSaving(true)
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('pairings')
-      .insert({ portal_a: formPortalA, portal_b: formPortalB, app_mode: formMode, active: true, schedule: {} })
-      .select('*, portal_a_info:portals!portal_a(id, name, portal_id, status), portal_b_info:portals!portal_b(id, name, portal_id, status)')
-      .single()
-
+    const { data, error } = await actionInsertPairing({ portal_a: formPortalA, portal_b: formPortalB, app_mode: formMode })
     if (!error && data) {
       setPairings(prev => [data, ...prev])
       setShowForm(false)
@@ -60,8 +54,7 @@ export function PairingsManager({ initialPairings, availablePortals, canManage }
 
   async function handleToggle(id: string, currentActive: boolean) {
     setToggling(id)
-    const supabase = createClient()
-    const { error } = await supabase.from('pairings').update({ active: !currentActive }).eq('id', id)
+    const { error } = await actionTogglePairing(id, !currentActive)
     if (!error) {
       setPairings(prev => prev.map(p => p.id === id ? { ...p, active: !currentActive } : p))
     }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { actionInsertUser, actionToggleUser } from '@/lib/actions'
 import { Mail, Plus, X, Loader2 } from 'lucide-react'
 import type { RoleName } from '@/lib/types'
 
@@ -46,25 +46,18 @@ export function UsersManager({ initialUsers, roles, clients, currentUserRole, cu
   async function handleCreate() {
     setSaving(true)
     setError(null)
-    const supabase = createClient()
 
-    const payload: any = {
-      email: form.email,
+    const payload = {
+      email:     form.email,
       full_name: form.full_name,
-      role_id: form.role_id || roles[0]?.id,
-      active: true,
+      role_id:   form.role_id || roles[0]?.id,
+      active:    true,
+      client_id: form.client_id || currentClientId || null,
     }
-    if (form.client_id) payload.client_id = form.client_id
-    else if (currentClientId) payload.client_id = currentClientId
 
-    const { data, error: err } = await supabase
-      .from('users')
-      .insert(payload)
-      .select('*, roles(*), clients(*)')
-      .single()
-
+    const { data, error: err } = await actionInsertUser(payload)
     if (err) {
-      setError(err.message)
+      setError(err)
     } else if (data) {
       setUsers(prev => [data, ...prev])
       setShowForm(false)
@@ -75,8 +68,7 @@ export function UsersManager({ initialUsers, roles, clients, currentUserRole, cu
 
   async function handleToggleActive(id: string, currentActive: boolean) {
     setTogglingId(id)
-    const supabase = createClient()
-    await supabase.from('users').update({ active: !currentActive }).eq('id', id)
+    await actionToggleUser(id, !currentActive)
     setUsers(prev => prev.map(u => u.id === id ? { ...u, active: !currentActive } : u))
     setTogglingId(null)
   }

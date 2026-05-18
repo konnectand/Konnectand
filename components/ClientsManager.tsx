@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { actionInsertClient, actionToggleClient } from '@/lib/actions'
 import { Building2, Globe, Mail, Plus, X, Loader2, Monitor } from 'lucide-react'
 import type { Client } from '@/lib/types'
 
@@ -23,10 +23,9 @@ export function ClientsManager({ initialClients, portalCounts }: Props) {
   async function handleCreate() {
     setSaving(true)
     setError(null)
-    const supabase = createClient()
-    const { data, error: err } = await supabase.from('clients').insert(form).select().single()
+    const { data, error: err } = await actionInsertClient(form)
     if (err) {
-      setError(err.message)
+      setError(err)
     } else if (data) {
       setClients(prev => [data, ...prev])
       setShowForm(false)
@@ -37,8 +36,7 @@ export function ClientsManager({ initialClients, portalCounts }: Props) {
 
   async function handleToggleActive(id: string, currentActive: boolean) {
     setTogglingId(id)
-    const supabase = createClient()
-    await supabase.from('clients').update({ active: !currentActive }).eq('id', id)
+    await actionToggleClient(id, !currentActive)
     setClients(prev => prev.map(c => c.id === id ? { ...c, active: !currentActive } : c))
     setTogglingId(null)
   }
