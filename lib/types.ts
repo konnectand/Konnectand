@@ -126,7 +126,7 @@ export type PortalCommand =
   | { type: 'end_call' }
 
 export interface WebRTCSignal {
-  type: 'offer' | 'answer' | 'candidate' | 'hangup'
+  type: 'offer' | 'answer' | 'candidate' | 'hangup' | 'ready'
   from: string
   to: string
   sdp?: string

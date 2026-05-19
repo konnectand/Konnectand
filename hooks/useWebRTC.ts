@@ -105,34 +105,59 @@ export function useWebRTC(portalId: string) {
       channel.send({ type: 'broadcast', event: 'signal', payload })
     }
 
+    // Lexicographically smaller portal_id is always the offerer.
+    const isOfferer = portalId < peerId
+    // Guard so we never send more than one offer per startCall.
+    let offerSent = false
+
+    async function createAndSendOffer() {
+      if (offerSent) return
+      offerSent = true
+      console.log(`[WebRTC:${portalId}] peer ready — creating offer...`)
+      try {
+        const offer = await pc.createOffer()
+        await pc.setLocalDescription(offer)
+        console.log(`[WebRTC:${portalId}] offer created, sending to ${peerId}`)
+        sendSignal({ type: 'offer', from: portalId, to: peerId, sdp: offer.sdp })
+      } catch (err) {
+        console.error(`[WebRTC:${portalId}] createOffer failed:`, err)
+      }
+    }
+
     channel
       .on('broadcast', { event: 'signal' }, ({ payload }: { payload: WebRTCSignal }) => {
         console.log(`[WebRTC:${portalId}] ← broadcast type=${payload.type} from=${payload.from} to=${payload.to}`)
+
+        // ── Handshake ──────────────────────────────────────────────────────────
+        // Both sides send 'ready' on subscription. Offerer creates offer only
+        // after receiving 'ready' from the answerer, guaranteeing the answerer is
+        // already subscribed before the offer arrives.
+        // If offerer subscribed first and its 'ready' was missed, the answerer
+        // re-sends its own 'ready' upon receiving the offerer's 'ready'.
+        if (payload.type === 'ready') {
+          if (payload.from !== peerId) return
+          if (isOfferer) {
+            createAndSendOffer()
+          } else {
+            // Answerer echoes 'ready' so a late offerer knows we're subscribed.
+            console.log(`[WebRTC:${portalId}] offerer ready received — echoing our ready`)
+            sendSignal({ type: 'ready', from: portalId, to: peerId })
+          }
+          return
+        }
+
         if (payload.to !== portalId) {
           console.log(`[WebRTC:${portalId}] ignoring signal (not for us)`)
           return
         }
         handleIncomingSignal(payload, pc, sendSignal, portalId)
       })
-      .subscribe(async (status) => {
+      .subscribe((status) => {
         console.log(`[WebRTC:${portalId}] channel status: ${status}`)
         if (status !== 'SUBSCRIBED') return
 
-        // Only the lexicographically smaller portal ID acts as offerer.
-        // This prevents signaling collisions when both portals call startCall simultaneously.
-        const isOfferer = portalId < peerId
-        console.log(`[WebRTC:${portalId}] isOfferer=${isOfferer} (${portalId} vs ${peerId})`)
-
-        if (!isOfferer) {
-          console.log(`[WebRTC:${portalId}] waiting for offer from ${peerId}...`)
-          return
-        }
-
-        console.log(`[WebRTC:${portalId}] creating offer...`)
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-        console.log(`[WebRTC:${portalId}] offer created, sending to ${peerId}`)
-        sendSignal({ type: 'offer', from: portalId, to: peerId, sdp: offer.sdp })
+        console.log(`[WebRTC:${portalId}] isOfferer=${isOfferer} (${portalId} vs ${peerId}) — sending ready`)
+        sendSignal({ type: 'ready', from: portalId, to: peerId })
       })
   }, [portalId, cleanup])
 
