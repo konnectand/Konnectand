@@ -41,6 +41,13 @@ export async function actionInsertPortal(payload: {
   return { data, error: error ? error.message : null }
 }
 
+export async function actionDeletePortal(id: string) {
+  const db = createAdminClient()
+  const { error } = await db.from('portals').delete().eq('id', id)
+  if (error) console.error('[actionDeletePortal] DELETE failed:', error)
+  return { error: error ? error.message : null }
+}
+
 // ── PAIRINGS ─────────────────────────────────────────────
 
 export async function actionInsertPairing(payload: {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { actionInsertPortal } from '@/lib/actions'
+import { actionInsertPortal, actionDeletePortal } from '@/lib/actions'
 import { PortalCard } from './PortalCard'
 import { Search, Plus, X, Loader2 } from 'lucide-react'
 import type { Portal, PortalStatus } from '@/lib/types'
@@ -37,6 +37,16 @@ export function RealtimePortalsList({ initialPortals, clients, canCreate }: Prop
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  async function handleDelete(portalId: string) {
+    if (!confirm('¿Eliminar este portal? Esta acción no se puede deshacer.')) return
+    const { error } = await actionDeletePortal(portalId)
+    if (error) {
+      alert(`Error al eliminar: ${error}`)
+    } else {
+      setPortals(prev => prev.filter(p => p.id !== portalId))
+    }
+  }
 
   async function handleCreate() {
     if (!form.portal_id || !form.name) return
@@ -234,6 +244,7 @@ export function RealtimePortalsList({ initialPortals, clients, canCreate }: Prop
               key={portal.id}
               portal={portal}
               liveStatus={statuses[portal.id] ?? null}
+              onDelete={canCreate ? () => handleDelete(portal.id) : undefined}
             />
           ))}
         </div>

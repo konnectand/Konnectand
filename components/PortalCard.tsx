@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MapPin, Clock, Cpu, Wifi, WifiOff } from 'lucide-react'
+import { MapPin, Cpu, Wifi, WifiOff, Trash2 } from 'lucide-react'
 import { StatusBadge } from './StatusBadge'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -8,9 +8,10 @@ import type { Portal, PortalStatus } from '@/lib/types'
 interface PortalCardProps {
   portal: Portal
   liveStatus?: PortalStatus | null
+  onDelete?: () => void
 }
 
-export function PortalCard({ portal, liveStatus }: PortalCardProps) {
+export function PortalCard({ portal, liveStatus, onDelete }: PortalCardProps) {
   const status = liveStatus?.status ?? portal.status ?? 'offline'
   const lastSeen = portal.last_seen
     ? formatDistanceToNow(new Date(portal.last_seen), { addSuffix: true, locale: es })
@@ -28,7 +29,18 @@ export function PortalCard({ portal, liveStatus }: PortalCardProps) {
           </p>
           <p className="text-xs text-gray-500 mt-0.5 font-mono">{portal.portal_id}</p>
         </div>
-        <StatusBadge status={status} />
+        <div className="flex items-center gap-2 shrink-0">
+          <StatusBadge status={status} />
+          {onDelete && (
+            <button
+              onClick={e => { e.preventDefault(); onDelete() }}
+              className="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              title="Eliminar portal"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">
