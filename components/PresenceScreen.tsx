@@ -54,7 +54,7 @@ export default function PresenceScreen({ portalId, onExpired, onActivated }: Pro
       <div className="relative z-10 text-center animate-slide-up">
         <h2 className="text-6xl font-bold text-white">Hola!</h2>
         <p className="text-xl text-[#8B7FF5] mt-4 font-light">
-          Conecta con otra ubicacion de Andorra
+          Conectando con otra ubicacion de Andorra...
         </p>
         <p className="text-sm text-gray-600 mt-2 tracking-widest uppercase">{portalId}</p>
       </div>

@@ -27,8 +27,9 @@ export default function KioskApp({ portalId }: Props) {
   const { remoteStream, startCall, hangUp } = useWebRTC(portalId)
 
   // Camera stream managed here so it persists across PRESENCE → ACTIVE without re-requesting permission
-  const cameraStreamRef = useRef<MediaStream | null>(null)
+  const cameraStreamRef    = useRef<MediaStream | null>(null)
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  const presenceTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const openCamera = useCallback(async () => {
     if (cameraStreamRef.current) {
@@ -55,9 +56,13 @@ export default function KioskApp({ portalId }: Props) {
     setLocalStream(null)
   }, [portalId])
 
-  // Called when the local user clicks "Conectar ahora" in PresenceScreen.
-  // Looks up the paired portal, notifies it via portal_logs, and starts WebRTC locally.
+  // Starts the call: looks up the paired portal, notifies it, and starts WebRTC locally.
+  // Called automatically after the presence delay or immediately when the user taps.
   const activateCall = useCallback(async () => {
+    if (presenceTimerRef.current) {
+      clearTimeout(presenceTimerRef.current)
+      presenceTimerRef.current = null
+    }
     const supabase = createClient()
     const { data: pairing } = await supabase
       .from('pairings')
@@ -87,6 +92,7 @@ export default function KioskApp({ portalId }: Props) {
     console.log(`[KioskApp:${portalId}] command received:`, cmd)
     switch (cmd.type) {
       case 'set_standby':
+        if (presenceTimerRef.current) { clearTimeout(presenceTimerRef.current); presenceTimerRef.current = null }
         closeCamera()
         set('STANDBY')
         break
@@ -122,14 +128,15 @@ export default function KioskApp({ portalId }: Props) {
           portalId={portalId}
           onMotionDetected={() => {
             set('PRESENCE')
-            openCamera()  // pre-warm camera while user decides to connect
+            openCamera()
+            presenceTimerRef.current = setTimeout(() => activateCall(), 2500)
           }}
         />
       )}
       {state === 'PRESENCE' && (
         <PresenceScreen
           portalId={portalId}
-          onExpired={() => { closeCamera(); set('IDLE') }}
+          onExpired={() => { if (presenceTimerRef.current) { clearTimeout(presenceTimerRef.current); presenceTimerRef.current = null } closeCamera(); set('IDLE') }}
           onActivated={() => { activateCall() }}
         />
       )}
