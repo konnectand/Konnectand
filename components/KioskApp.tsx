@@ -22,10 +22,11 @@ export default function KioskApp({ portalId }: Props) {
     setState(s)
   }, [portalId])
 
-  const { localStream, remoteStream, startCall, hangUp } = useWebRTC(portalId)
+  const { remoteStream, startCall, hangUp } = useWebRTC(portalId)
 
   // Camera stream managed here so it persists across PRESENCE → ACTIVE without re-requesting permission
   const cameraStreamRef = useRef<MediaStream | null>(null)
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
 
   const openCamera = useCallback(async () => {
     if (cameraStreamRef.current) {
@@ -34,8 +35,10 @@ export default function KioskApp({ portalId }: Props) {
     }
     console.log(`[KioskApp:${portalId}] openCamera — calling getUserMedia...`)
     try {
-      cameraStreamRef.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      const tracks = cameraStreamRef.current.getTracks().map(t => `${t.kind}(${t.readyState})`).join(', ')
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      cameraStreamRef.current = stream
+      setLocalStream(stream)
+      const tracks = stream.getTracks().map(t => `${t.kind}(${t.readyState})`).join(', ')
       console.log(`[KioskApp:${portalId}] openCamera OK — tracks: ${tracks}`)
     } catch (err) {
       console.error(`[KioskApp:${portalId}] openCamera failed:`, err)
@@ -47,6 +50,7 @@ export default function KioskApp({ portalId }: Props) {
     console.log(`[KioskApp:${portalId}] closeCamera — stopping tracks`)
     cameraStreamRef.current.getTracks().forEach(t => t.stop())
     cameraStreamRef.current = null
+    setLocalStream(null)
   }, [portalId])
 
   const handleCommand = useCallback((cmd: PortalCommand) => {
