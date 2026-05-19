@@ -41,6 +41,30 @@ export async function actionInsertPortal(payload: {
   return { data, error: error ? error.message : null }
 }
 
+export async function actionSendPortalCommand(
+  targetPortalId: string,
+  cmd: object,
+) {
+  const db = createAdminClient()
+  const { data: portal } = await db
+    .from('portals')
+    .select('id')
+    .eq('portal_id', targetPortalId)
+    .maybeSingle()
+  if (!portal) {
+    console.error('[actionSendPortalCommand] Portal not found:', targetPortalId)
+    return { error: 'Portal not found' }
+  }
+  const { error } = await db.from('portal_logs').insert({
+    portal_id: portal.id,
+    level: 'command',
+    message: JSON.stringify(cmd),
+    data: {},
+  })
+  if (error) console.error('[actionSendPortalCommand] INSERT failed:', error)
+  return { error: error?.message ?? null }
+}
+
 export async function actionDeletePortal(id: string) {
   const db = createAdminClient()
   const { error } = await db.from('portals').delete().eq('id', id)

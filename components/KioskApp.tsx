@@ -8,6 +8,8 @@ import StandbyScreen  from './StandbyScreen'
 import { useHeartbeat }       from '@/hooks/useHeartbeat'
 import { useCommandListener } from '@/hooks/useCommandListener'
 import { useWebRTC }          from '@/hooks/useWebRTC'
+import { createClient }       from '@/lib/supabase/client'
+import { actionSendPortalCommand } from '@/lib/actions'
 import type { KioskState, PortalCommand } from '@/lib/types'
 
 interface Props { portalId: string }
@@ -52,6 +54,34 @@ export default function KioskApp({ portalId }: Props) {
     cameraStreamRef.current = null
     setLocalStream(null)
   }, [portalId])
+
+  // Called when the local user clicks "Conectar ahora" in PresenceScreen.
+  // Looks up the paired portal, notifies it via portal_logs, and starts WebRTC locally.
+  const activateCall = useCallback(async () => {
+    const supabase = createClient()
+    const { data: pairing } = await supabase
+      .from('pairings')
+      .select('portal_a, portal_b')
+      .or(`portal_a.eq.${portalId},portal_b.eq.${portalId}`)
+      .eq('active', true)
+      .maybeSingle()
+
+    if (!pairing) {
+      console.warn(`[KioskApp:${portalId}] No active pairing found — going ACTIVE without peer`)
+      set('ACTIVE')
+      return
+    }
+
+    const peerId = pairing.portal_a === portalId ? pairing.portal_b : pairing.portal_a
+    console.log(`[KioskApp:${portalId}] activateCall → peer=${peerId}`)
+
+    const { error } = await actionSendPortalCommand(peerId, { type: 'initiate_call', peerId: portalId })
+    if (error) console.error(`[KioskApp:${portalId}] failed to send initiate_call to ${peerId}:`, error)
+
+    const stream = cameraStreamRef.current ?? undefined
+    await startCall(peerId, stream)
+    set('ACTIVE')
+  }, [portalId, set, startCall])
 
   const handleCommand = useCallback((cmd: PortalCommand) => {
     console.log(`[KioskApp:${portalId}] command received:`, cmd)
@@ -100,7 +130,7 @@ export default function KioskApp({ portalId }: Props) {
         <PresenceScreen
           portalId={portalId}
           onExpired={() => { closeCamera(); set('IDLE') }}
-          onActivated={() => set('ACTIVE')}
+          onActivated={() => { activateCall() }}
         />
       )}
       {state === 'ACTIVE' && (
