@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { actionUpsertPortalStatus } from '@/lib/actions'
 import { HEARTBEAT_INTERVAL_MS } from '@/lib/constants'
 import type { KioskState } from '@/lib/types'
 
@@ -7,24 +8,19 @@ export function useHeartbeat(portalId: string, stateRef: React.MutableRefObject<
   const dbIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const supabase = createClient()
-
     async function beat(status?: 'online' | 'offline') {
       if (!dbIdRef.current) return
       const mem = (performance as any).memory
-      await supabase.from('portal_status').upsert(
-        {
-          portal_id:    dbIdRef.current,
-          status:       status ?? (stateRef.current === 'STANDBY' ? 'offline' : 'online'),
-          last_seen:    new Date().toISOString(),
-          cpu_usage:    0,
-          memory_usage: mem ? Math.round(mem.usedJSHeapSize / 1048576) : 0,
-        },
-        { onConflict: 'portal_id' },
-      )
+      await actionUpsertPortalStatus(dbIdRef.current, {
+        status:       status ?? (stateRef.current === 'STANDBY' ? 'offline' : 'online'),
+        last_seen:    new Date().toISOString(),
+        cpu_usage:    0,
+        memory_usage: mem ? Math.round(mem.usedJSHeapSize / 1048576) : 0,
+      })
     }
 
     async function init() {
+      const supabase = createClient()
       const { data } = await supabase
         .from('portals')
         .select('id')

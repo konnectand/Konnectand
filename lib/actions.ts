@@ -46,15 +46,20 @@ export async function actionSendPortalCommand(
   cmd: object,
 ) {
   const db = createAdminClient()
-  const { data: portal } = await db
+  const { data: portal, error: lookupErr } = await db
     .from('portals')
     .select('id')
     .eq('portal_id', targetPortalId)
     .maybeSingle()
-  if (!portal) {
-    console.error('[actionSendPortalCommand] Portal not found:', targetPortalId)
-    return { error: 'Portal not found' }
+  if (lookupErr) {
+    console.error('[actionSendPortalCommand] portal lookup failed:', lookupErr)
+    return { error: lookupErr.message }
   }
+  if (!portal) {
+    console.error('[actionSendPortalCommand] portal not found:', targetPortalId)
+    return { error: `Portal not found: ${targetPortalId}` }
+  }
+  console.log(`[actionSendPortalCommand] resolved ${targetPortalId} → uuid=${portal.id}`)
   const { error } = await db.from('portal_logs').insert({
     portal_id: portal.id,
     level: 'command',
@@ -62,6 +67,23 @@ export async function actionSendPortalCommand(
     data: {},
   })
   if (error) console.error('[actionSendPortalCommand] INSERT failed:', error)
+  return { error: error?.message ?? null }
+}
+
+export async function actionUpsertPortalStatus(
+  portalUUID: string,
+  payload: {
+    status: 'online' | 'offline'
+    last_seen: string
+    cpu_usage: number
+    memory_usage: number
+  },
+) {
+  const db = createAdminClient()
+  const { error } = await db
+    .from('portal_status')
+    .upsert({ portal_id: portalUUID, ...payload }, { onConflict: 'portal_id' })
+  if (error) console.error('[actionUpsertPortalStatus] upsert failed:', error)
   return { error: error?.message ?? null }
 }
 
